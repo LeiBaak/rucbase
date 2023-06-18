@@ -57,7 +57,7 @@ page_id_t DiskManager::AllocatePage(int fd) {
 }
 
 /**
- * @brief Deallocate page (operations like drop index/table)
+ * @brief Deallocate page (operations like drop index/table) 
  * Need bitmap in header page for tracking pages
  * This does not actually need to do anything for now.
  */
@@ -102,7 +102,7 @@ void DiskManager::create_file(const std::string &path) {
     // 注意不能重复创建相同文件
     if (!is_file(path)) {
         int fd = open(path.c_str(), O_CREAT, 0644);
-        printf("create_file——fd=%d\n", fd);
+        //printf("create_file——fd=%d\n", fd);
         close(fd);
     } else
         throw FileExistsError(path);
@@ -118,8 +118,9 @@ void DiskManager::destroy_file(const std::string &path) {
     if (!is_file(path)) {
         throw FileNotFoundError(path);
     }
-    if (!path2fd_.count(path)) {
-        int r = unlink(path.c_str());
+    auto iter = path2fd_.find(path);
+    if (iter == path2fd_.end()) {
+        unlink(path.c_str());
     }
     // 可以考虑抛出FileNotClosedError
 }
@@ -132,11 +133,12 @@ int DiskManager::open_file(const std::string &path) {
     // 调用open()函数，使用O_RDWR模式
     // 注意不能重复打开相同文件，并且需要更新文件打开列表
     if (!is_file(path)) {
-        throw FileNotFoundError(path); // test中有catch故此处throw
-    } 
-    if (!path2fd_.count(path)) {
+        throw FileNotFoundError(path);  // test中有catch故此处throw
+    }
+    auto iter = path2fd_.find(path);
+    if (iter == path2fd_.end()) {
         int fd = open(path.c_str(), O_RDWR);
-        printf("open_file——fd=%d\n", fd);
+        //printf("open_file——fd=%d\n", fd);
         path2fd_[path] = fd;
         fd2path_[fd] = path;
         return fd;
@@ -152,9 +154,10 @@ void DiskManager::close_file(int fd) {
     // Todo:
     // 调用close()函数
     // 注意不能关闭未打开的文件，并且需要更新文件打开列表
-    if (fd2path_.count(fd)) {
+    auto iter = fd2path_.find(fd);
+    if (iter != fd2path_.end()) {
         int r = close(fd);
-        printf("close_file——fd=%d, r=%d\n", fd, r);
+        //printf("close_file——fd=%d, r=%d\n", fd, r);
         std::string &path = fd2path_[fd];
         path2fd_.erase(path);
         fd2path_.erase(fd);

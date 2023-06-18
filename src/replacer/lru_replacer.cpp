@@ -20,8 +20,8 @@ bool LRUReplacer::Victim(frame_id_t *frame_id) {
     if (LRUhash_.empty()) {
         return false;
     }
-    frame_id_t fid = LRUlist_.front();
-    LRUlist_.pop_front();
+    frame_id_t fid = LRUlist_.back();
+    LRUlist_.pop_back();
     LRUhash_.erase(fid);
     *frame_id = fid;
     return true;
@@ -51,25 +51,18 @@ void LRUReplacer::Unpin(frame_id_t frame_id) {
     // Todo:
     //  支持并发锁
     //  选择一个frame取消固定
+
     std::scoped_lock lock{latch_};
     auto iter = LRUhash_.find(frame_id);
-    if (iter == LRUhash_.end()) { // frame_id不在replacer中
-        if (LRUhash_.size() >= max_size_) {
-            while (LRUhash_.size() >= max_size_) {
-                frame_id_t fid = LRUlist_.front();
-                LRUlist_.pop_front();
-                LRUhash_.erase(fid);
-            }
+    if (iter == LRUhash_.end()) {
+        while (LRUhash_.size() >= max_size_) {
+            frame_id_t fid = LRUlist_.back();
+            LRUlist_.pop_back();
+            LRUhash_.erase(fid);
         }
-        auto it = LRUlist_.insert(LRUlist_.end(), frame_id);
+        auto it = LRUlist_.insert(LRUlist_.begin(), frame_id);
         LRUhash_[frame_id] = it;
-    } 
-    //else { // frame_id在replacer中
-    //    LRUlist_.erase(iter->second);
-    //    LRUhash_.erase(frame_id);
-    //}
-    //auto it = LRUlist_.insert(LRUlist_.end(), frame_id);
-    //LRUhash_[frame_id] = it;
+    }
 }
 
 /** @return replacer中能够victim的数量 */
